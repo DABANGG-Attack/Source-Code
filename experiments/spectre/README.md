@@ -2,15 +2,12 @@
 
 Code for the Spectre CPU exploit taken from [crozone/SpectrePoC](https://github.com/crozone/SpectrePoC).
 
-## Building
+To mount D+F+R attack: 
 
-1. `make`
+`./dfr 1`
 
-The output binary is `./spectre.out`.
+To mount F+R attack:
 
-## Executing
+`./dfr 0`
 
-To run spectre with default cache hit threshold of 80, and the secret example string "The Magic Words are Squeamish Ossifrage." as the target, run `./spectre.out` with no command line arguments.
-
-
-
+The `cache_hit_threshold` variable can be changed to perform F+R (or F+F) attack.
