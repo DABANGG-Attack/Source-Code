@@ -3,8 +3,7 @@ from re import L
 import numpy as np
 from scipy import stats
 
-DETAILED_STATS = True
-SHOW_PLOT = True
+SHOW_PLOT = False
 
 # Initializations
 x = []
@@ -43,9 +42,6 @@ for i in range(10):
     miss_modes.append(stats.mode(miss_modes_aux)[0][0])
     hit_modes_aux[:] = [hit for hit in hit_modes_aux if hit != hit_modes[i]]
     miss_modes_aux[:] = [miss for miss in miss_modes_aux if miss != miss_modes[i]]
-    if DETAILED_STATS:
-        print("Hit mode ", i, ": ", hit_modes[i])
-        print("Miss mode ", i, ": ", miss_modes[i])
 
 hit_modes.sort()
 miss_modes.sort()

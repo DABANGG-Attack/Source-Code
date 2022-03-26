@@ -3,7 +3,7 @@ from re import L
 import numpy as np
 from scipy import stats
 
-SHOW_PLOT = True
+SHOW_PLOT = False
 
 # Initializations
 x = []
