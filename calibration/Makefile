@@ -5,4 +5,6 @@ all: fr_stepped_distribution
 fr_stepped_distribution: fr_stepped_distribution.c ./cacheutils.h
 	gcc -std=gnu11 -O2 -pthread -o $@ $@.c
 clean:
-	rm ff_stepped_distribution fr_stepped_distribution
+	rm -f ff_stepped_distribution fr_stepped_distribution
+clean_data:
+	rm -f *.csv

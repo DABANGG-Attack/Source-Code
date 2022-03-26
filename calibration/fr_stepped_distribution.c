@@ -15,7 +15,7 @@
 #include<sched.h>
 #include "./cacheutils.h"
 
-#define ITERATIONS (200000)
+#define ITERATIONS (10000)
 
 long long count = 0;
 int cached_var = 0;
@@ -23,6 +23,10 @@ int non_cached_var = 0;
 int cached_delta_arr[ITERATIONS];
 int non_cached_delta_arr[ITERATIONS];
 int core_id = 0;
+
+int thread_running = 0;
+pthread_cond_t      cond  = PTHREAD_COND_INITIALIZER;
+pthread_mutex_t     mutex = PTHREAD_MUTEX_INITIALIZER;
 
 int set_affinity(long thread_id, int cpu_id){
     cpu_set_t mask;
@@ -34,10 +38,17 @@ int set_affinity(long thread_id, int cpu_id){
 void *cached_in_core(){
     set_affinity(pthread_self(),core_id);
     cached_var = cached_var%10;
-    for(int i=0;i<100;i++){
+    pthread_mutex_lock(&mutex);
+    thread_running = 1;
+    pthread_cond_signal(&cond);
+    pthread_mutex_unlock(&mutex);
+    for (int i = 0; i < 100; i++){
         flush(&i);
         cached_var += i;
-        i=i+(i%2);
+        i=i+1+(i%2);
+        if (thread_running == 0) {
+            break;
+        }
     }
 }
 
@@ -86,22 +97,27 @@ int measure_access_latency(void* addr){
 int attacker(void* addr, int cached)
 {
     flush(addr);
+    pthread_t t[1];
 
     if(core_id==-1 && cached){
         measure_access_latency(addr);
         compute_intensive_loop(400);
     }
     else if(cached){
-        pthread_t t[1];
         pthread_create(&t[0],NULL,cached_in_core,NULL);
-        compute_intensive_loop(400);
-        pthread_join(t[0],NULL);
+        pthread_mutex_lock(&mutex);
+        while (thread_running == 0) pthread_cond_wait(&cond, &mutex);
     }
     else
         compute_intensive_loop(400);
 
     size_t delta = measure_access_latency(addr);
 
+    if (core_id != -1 && cached) {
+        thread_running = 0;
+        pthread_mutex_unlock(&mutex);
+        pthread_join(t[0],NULL);
+    }
     if (delta >= 0 && delta <= 1000 && count < ITERATIONS)
     {
 	    if(cached)
@@ -129,25 +145,35 @@ int main()
 
     for(int i = 0; i < 4; i++){
         sleep(5);
-        
+        printf("Test type: %s\n", test_type[i]);
         set_affinity(pthread_self(),0);
         core_id = core_id_arr[i];
         count = 0;
-        size_t time_remaining = rdtsc();
-        while(1)
+        printf("Part 1");
+        while(1) {
             if(attacker(addr1, 1))  break;
+            if (count%(ITERATIONS/10) == 0) {
+                printf(".");
+            }
+        }
+        printf("Done\n");
         count = 0;
-        time_remaining = rdtsc() - time_remaining;
         sleep(5);
-        while(1)
+        printf("Part 2");
+        while(1) {
             if(attacker(addr2, 0))  break;
+            if (count%(ITERATIONS/10) == 0) {
+                printf(".");
+            }
+        }
+        printf("Done\n");
         while(count>0){
-            sprintf(str,"%lld,%d,%d\n",ITERATIONS-count+1,cached_delta_arr[ITERATIONS-count],non_cached_delta_arr[ITERATIONS-count]);
+            sprintf(str,"%lld,%d,%d\n",ITERATIONS-count+1,
+                    cached_delta_arr[ITERATIONS-count],non_cached_delta_arr[ITERATIONS-count]);
             if(write(fd,str,strlen(str))<0)
                 printf("Write error!\n");
             count--;
         }
-        printf("Test type: %s, Status: done, please wait for approximately %d seconds.\n",test_type[i],(int)(((float)(time_remaining/3400000000)+5)*(6-2*i)+1));
     }
     close(fd);
     return 0;
